@@ -1,0 +1,239 @@
+import re
+
+# 19
+NAME                = 0
+DOT                 = 1
+CHARACTER_CLASS     = 2
+ORDERED_CHOICE      = 3
+SEQUENCE            = 4
+STRING_LITERAL      = 5
+ZERO_OR_MORE        = 6
+ONE_OR_MORE         = 7
+OPTIONAL            = 8
+NEGATIVE_LOOK_AHEAD = 9
+POSITIVE_LOOK_AHEAD = 10
+ERROR_NAME          = 11
+ERROR_CHOICE        = 12
+
+# 33
+def parse(aCompiledGrammar, input, name = None):
+    node = SyntaxNode("#document", input, 0, 0)
+    table = aCompiledGrammar.table
+    nameToUID = aCompiledGrammar.nameToUID
+
+    name = name or "start";
+
+    # This is a stupid check.
+    if 'EOF' in aCompiledGrammar.nameToUID:
+        table[0] = [SEQUENCE, nameToUID[name], nameToUID["EOF"]];
+
+    if not evaluate(Context(input, table), node, table, 0):
+        # This is a stupid check.
+        if 'EOF' in aCompiledGrammar.nameToUID:
+            table[0] = [SEQUENCE, nameToUID["%" + name], nameToUID["EOF"]]
+
+        node.children.length = 0
+
+        evaluate(Context(input, table), node, table, 0)
+
+        def enteredNode(node):
+            if node.error:
+                print(node.message() + '\n')
+
+        node.traverse(
+            traverseTextNodes=False,
+            enteredNode=enteredNode
+        )
+
+    return node;
+
+# 71
+class Context:
+    def __init__(self, input, table):
+        self.position = 0
+        self.input = input
+        self.memos = [{} for i in table]
+
+# 80
+def evaluate(context, parent, rules, rule_id):
+    rule = rules[rule_id]
+    ruletype = rule[0]
+    input_length = len(context.input)
+    memos = context.memos[rule_id]
+
+    uid = context.position
+    entry = memos[uid]
+
+    if entry == False:
+        return False
+    elif entry == True:
+        return True
+    elif entry:
+        if parent:
+            parent.children.append(entry.node)
+        context.position = entry.position
+        return True
+
+    # 102
+    if ruletype == NAME or ruletype == ERROR_NAME:
+        node = SyntaxNode(rule[1], context.input, context.position, 0, rule[3])
+        if not evaluate(context, node, rules, rule[2]):
+            memos[uid] = False
+            return False
+        node.range.length = context.position - node.range.location
+        memos[uid] = {'node': node, 'position': context.position }
+
+        if parent:
+            parent.children.append(node)
+        return True
+    # 119
+    elif ruletype == CHARACTER_CLASS:
+        character = context.input[context.position]
+
+        if type(rule[1]) == str:
+            rule[1] = re.compile(rule[1])
+
+        if rule[1].match(character):
+            if parent:
+                parent.children.append(character);
+            context.position += 1
+            return True
+        memos[uid] = False;
+        return False
+    # 135
+    elif ruletype == SEQUENCE:
+        for index in range(1, len(rule)):
+            if not evaluate(context, parent, rules, rule[index]):
+                memos[uid] = False
+                return False
+        return True
+    # 148
+    elif ruletype == ORDERED_CHOICE or ruletype == ERROR_CHOICE:
+        index = 1
+        count = len(rule)
+        position = context.position
+
+        for index in range(1, len(rule)):
+            # cache opportunity here.
+            child_count = parent and len(parent.children)
+
+            if evaluate(context, parent, rules, rule[index]):
+                return True
+
+            if parent:
+                parent.children.length = child_count
+            context.position = position;
+        memos[uid] = False
+        return False
+
+    # 169
+    elif ruletype == STRING_LITERAL:
+        string = rule[1]
+        string_length = len(string)
+
+        if string_length + context.position > input_length:
+            memos[uid] = False;
+            return False;
+
+        index = 0
+
+        for index in range(0, len(string)):
+            if context.input[context.position] != string[index]:
+                context.position -= index
+                memos[uid] = False
+                return False
+            context.position += 1
+        if parent:
+            parent.children.append(string)
+
+        return True;
+    # 194
+    elif ruletype == DOT:
+        if context.position < input_length:
+            if parent:
+                parent.children.append(context.input[context.position]);
+            context.position += 1
+            return True;
+        memos[uid] = False;
+        return False;
+    # 204
+    elif ruletype == POSITIVE_LOOK_AHEAD or ruletype == NEGATIVE_LOOK_AHEAD:
+        position = context.position
+        result = evaluate(context, null, rules, rule[1]) == (ruletype == POSITIVE_LOOK_AHEAD)
+        context.position = position
+        memos[uid] = result
+        return result
+    # 213
+    elif ruletype == ZERO_OR_MORE:
+        child = None
+        position = context.position
+        childCount = parent and len(parent.children)
+
+        while evaluate(context, parent, rules, rule[1]):
+            position = context.position,
+            childCount = parent and len(parent.children)
+
+        context.position = position
+        if parent:
+            parent.children.length = childCount
+
+        return True;
+
+    # 230
+    elif ruletype == ONE_OR_MORE:
+        position = context.position
+        childCount = parent and len(parent.children)
+        if not evaluate(context, parent, rules, rule[1]):
+            memos[uid] = False;
+            context.position = position;
+            if parent:
+                parent.children.length = childCount
+            return False;
+        position = context.position
+        childCount = parent and len(parent.children)
+        while evaluate(context, parent, rules, rule[1]):
+            position = context.position
+            childCount = parent and len(parent.children)
+        context.position = position
+        if parent:
+            parent.children.length = childCount
+        return True;
+
+    # 253
+    elif ruletype == OPTIONAL:
+        position = context.position
+        childCount = parent and len(parent.children)
+
+        if not evaluate(context, parent, rules, rule[1]):
+            context.position = position;
+            if parent:
+                parent.children.length = childCount;
+        return True;
+
+# 269
+class SyntaxNode:
+    def __init__(self, aName, aSource, aLocation, aLength, anErrorMessage):
+        self.name = aName;
+        self.source = aSource;
+        self.range = Range(aLocation, aLength)
+        self.children = [];
+        if anErrorMessage:
+            self.error = anErrorMessage;
+
+    # 280
+    def message():
+        return "NOT IMPL: SyntaxNode.message"
+
+# new
+class Range:
+    def __init__(self, location, length):
+        self.location = location
+        self.length = length
+
+import json
+
+math_file = open('math.lang')
+math = json.load(math_file)
+math_file.close()
+
+print(parse(math, "1+2"))
