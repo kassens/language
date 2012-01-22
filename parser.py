@@ -62,13 +62,10 @@ def evaluate(context, parent, rules, rule_id):
     memos = context.memos[rule_id]
 
     uid = context.position
-    entry = uid in memos and memos[uid]
 
-    if entry == False:
-        return False
-    elif entry == True:
-        return True
-    elif entry:
+    if uid in memos:
+        entry = memos[uid]
+        if type(entry) == bool: return entry
         if parent:
             parent.children.append(entry.node)
         context.position = entry.position
