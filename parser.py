@@ -18,21 +18,21 @@ ERROR_CHOICE        = 12
 # 33
 def parse(aCompiledGrammar, input, name = None):
     node = SyntaxNode("#document", input, 0, 0)
-    table = aCompiledGrammar.table
-    nameToUID = aCompiledGrammar.nameToUID
+    table = aCompiledGrammar['table']
+    nameToUID = aCompiledGrammar['nameToUID']
 
     name = name or "start";
 
     # This is a stupid check.
-    if 'EOF' in aCompiledGrammar.nameToUID:
+    if 'EOF' in nameToUID:
         table[0] = [SEQUENCE, nameToUID[name], nameToUID["EOF"]];
 
     if not evaluate(Context(input, table), node, table, 0):
         # This is a stupid check.
-        if 'EOF' in aCompiledGrammar.nameToUID:
+        if 'EOF' in nameToUID:
             table[0] = [SEQUENCE, nameToUID["%" + name], nameToUID["EOF"]]
 
-        node.children.length = 0
+        node.children = []
 
         evaluate(Context(input, table), node, table, 0)
 
@@ -62,7 +62,7 @@ def evaluate(context, parent, rules, rule_id):
     memos = context.memos[rule_id]
 
     uid = context.position
-    entry = memos[uid]
+    entry = uid in memos and memos[uid]
 
     if entry == False:
         return False
@@ -212,23 +212,52 @@ def evaluate(context, parent, rules, rule_id):
 
 # 269
 class SyntaxNode:
-    def __init__(self, aName, aSource, aLocation, aLength, anErrorMessage):
+    def __init__(self, aName, aSource, aLocation, aLength, anErrorMessage = None):
         self.name = aName;
         self.source = aSource;
         self.range = Range(aLocation, aLength)
         self.children = [];
-        if anErrorMessage:
-            self.error = anErrorMessage;
+        self.error = anErrorMessage;
 
     # 280
-    def message():
+    def message(self):
         return "NOT IMPL: SyntaxNode.message"
+
+    # 310
+    def __str__(self, spaces=""):
+        string = spaces + self.name + " <" + self.innerText() + "> "
+        for child in self.children:
+            if type(child) == str:
+                string += '\n' + spaces + '\t' + child
+            else:
+                string += '\n' + child.__str__(spaces + '\t')
+        return string
+
+    # 334
+    def innerText(self):
+        r = self.range
+        return self.source[r.location:r.location + r.length]
+
+    # 341
+    def traverse(self, **walker):
+        if not 'enteredNode' in walker or walker['enteredNode'](self) != False:
+            for child in self.children:
+                if type(child) != str:
+                    child.traverse(**walker);
+                elif 'traversesTextNodes' in walker:
+                    walker['enteredNode'](child)
+                    if 'exitedNode' in walker:
+                        walker['exitedNode'](child)
+        if 'exitedNode' in walker:
+            walker['exitedNode'](self)
 
 # new
 class Range:
     def __init__(self, location, length):
         self.location = location
         self.length = length
+    def __str__(self):
+        return 'Range(location={0.location}, length={0.length})'.format(self)
 
 import json
 
