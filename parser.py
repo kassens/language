@@ -73,7 +73,9 @@ def evaluate(context, parent, rules, rule_id):
 
     # 102
     if ruletype == NAME or ruletype == ERROR_NAME:
-        node = SyntaxNode(rule[1], context.input, context.position, 0, rule[3])
+        error_message = rule[3] if len(rule) > 3 else None
+        node = SyntaxNode(rule[1], context.input, context.position, 0,
+                error_message)
         if not evaluate(context, node, rules, rule[2]):
             memos[uid] = False
             return False
@@ -85,6 +87,10 @@ def evaluate(context, parent, rules, rule_id):
         return True
     # 119
     elif ruletype == CHARACTER_CLASS:
+        if context.position >= len(context.input):
+            memos[uid] = False
+            return False
+
         character = context.input[context.position]
 
         if type(rule[1]) == str:
@@ -184,8 +190,8 @@ def evaluate(context, parent, rules, rule_id):
             memos[uid] = False;
             context.position = position;
             if parent:
-                parent.children.length = childCount
-            return False;
+                parent.children = parent.children[:childCount]
+            return False
         position = context.position
         childCount = parent and len(parent.children)
         while evaluate(context, parent, rules, rule[1]):
@@ -193,7 +199,7 @@ def evaluate(context, parent, rules, rule_id):
             childCount = parent and len(parent.children)
         context.position = position
         if parent:
-            parent.children.length = childCount
+            parent.children = parent.children[:childCount]
         return True;
 
     # 253
@@ -204,7 +210,7 @@ def evaluate(context, parent, rules, rule_id):
         if not evaluate(context, parent, rules, rule[1]):
             context.position = position;
             if parent:
-                parent.children.length = childCount;
+                parent.children = parent.children[:childCount]
         return True;
 
 # 269
