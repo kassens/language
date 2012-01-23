@@ -125,7 +125,7 @@ def evaluate(context, parent, rules, rule_id):
                 return True
 
             if parent:
-                parent.children.length = child_count
+                parent.children = parent.children[:child_count]
             context.position = position;
         memos[uid] = False
         return False
