@@ -17,6 +17,7 @@ ERROR_CHOICE        = 12
 
 # 33
 def parse(aCompiledGrammar, input, name = None):
+    print(input)
     node = SyntaxNode("#document", input, 0, 0)
     table = aCompiledGrammar['table']
     nameToUID = aCompiledGrammar['nameToUID']
@@ -262,10 +263,14 @@ class Range:
     def __str__(self):
         return 'Range(location={0.location}, length={0.length})'.format(self)
 
+import sys
 import json
 
-math_file = open('math.lang')
-math = json.load(math_file)
-math_file.close()
+if len(sys.argv) != 2:
+    print('1 argument expected')
+    exit()
 
-print(parse(math, "1+2"))
+with open(sys.argv[1]) as grammarfile:
+    grammar = json.load(grammarfile)
+
+print(parse(grammar, sys.stdin.read()))
