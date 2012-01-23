@@ -163,7 +163,7 @@ def evaluate(context, parent, rules, rule_id):
     # 204
     elif ruletype == POSITIVE_LOOK_AHEAD or ruletype == NEGATIVE_LOOK_AHEAD:
         position = context.position
-        result = evaluate(context, null, rules, rule[1]) == (ruletype == POSITIVE_LOOK_AHEAD)
+        result = evaluate(context, None, rules, rule[1]) == (ruletype == POSITIVE_LOOK_AHEAD)
         context.position = position
         memos[uid] = result
         return result
@@ -174,12 +174,12 @@ def evaluate(context, parent, rules, rule_id):
         childCount = parent and len(parent.children)
 
         while evaluate(context, parent, rules, rule[1]):
-            position = context.position,
+            position = context.position
             childCount = parent and len(parent.children)
 
         context.position = position
         if parent:
-            parent.children.length = childCount
+            parent.children = parent.children[:childCount]
 
         return True;
 
