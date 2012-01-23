@@ -42,7 +42,7 @@ def parse(aCompiledGrammar, input, name = None):
                 print(node.message() + '\n')
 
         node.traverse(
-            traverseTextNodes=False,
+            traversesTextNodes=False,
             enteredNode=enteredNode
         )
 
@@ -258,17 +258,21 @@ class SyntaxNode:
         return repr(self.source[r.location:r.location + r.length])
 
     # 341
-    def traverse(self, **walker):
-        if not 'enteredNode' in walker or walker['enteredNode'](self) != False:
+    def traverse(self,
+            enteredNode=None,
+            exitedNode=None,
+            traversesTextNodes=False):
+        if not enteredNode or enteredNode(self) != False:
             for child in self.children:
                 if type(child) != str:
-                    child.traverse(**walker);
-                elif 'traversesTextNodes' in walker:
-                    walker['enteredNode'](child)
-                    if 'exitedNode' in walker:
-                        walker['exitedNode'](child)
-        if 'exitedNode' in walker:
-            walker['exitedNode'](self)
+                    child.traverse(
+                            enteredNode=enteredNode,
+                            exitedNode=exitedNode,
+                            traversesTextNodes=traversesTextNodes);
+                elif traversesTextNodes:
+                    enteredNode(child)
+                    if exitedNode: exitedNode(child)
+        if exitedNode: exitedNode(self)
 
 # new
 class Range:
