@@ -225,7 +225,22 @@ class SyntaxNode:
 
     # 280
     def message(self):
-        return "NOT IMPL: SyntaxNode.message"
+        source = self.source
+
+        lineNumber = source.count('\n', 0, self.range.location) + 1
+        line_start = source.rfind('\n', 0, self.range.location) + 1
+        line_end = source.find('\n', line_start)
+
+        line = source[line_start:line_end]
+
+        message = line + "\n";
+
+        message += ' ' * (self.range.location - line_start)
+        message += '^' * min(self.range.length, len(line)) + "\n"
+        message += "ERROR line " + str(lineNumber) + ": " + self.error;
+
+        return message;
+
 
     # 310
     def __str__(self, spaces=""):
@@ -240,7 +255,7 @@ class SyntaxNode:
     # 334
     def innerText(self):
         r = self.range
-        return self.source[r.location:r.location + r.length]
+        return repr(self.source[r.location:r.location + r.length])
 
     # 341
     def traverse(self, **walker):
