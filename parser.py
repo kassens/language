@@ -66,7 +66,7 @@ def evaluate(context, parent, rules, rule_id):
 
     if uid in memos:
         entry = memos[uid]
-        if type(entry) == bool: return entry
+        if isinstance(entry, bool): return entry
         if parent:
             parent.children.append(entry.node)
         context.position = entry.position
@@ -94,7 +94,7 @@ def evaluate(context, parent, rules, rule_id):
 
         character = context.input[context.position]
 
-        if type(rule[1]) == str:
+        if isinstance(rule[1], str):
             rule[1] = re.compile(rule[1])
 
         if rule[1].match(character):
@@ -246,7 +246,7 @@ class SyntaxNode:
     def __str__(self, spaces=""):
         string = spaces + self.name + " <" + self.innerText() + "> "
         for child in self.children:
-            if type(child) == str:
+            if isinstance(child, str):
                 string += '\n' + spaces + '\t' + child
             else:
                 string += '\n' + child.__str__(spaces + '\t')
@@ -264,7 +264,7 @@ class SyntaxNode:
             traversesTextNodes=False):
         if not enteredNode or enteredNode(self) != False:
             for child in self.children:
-                if type(child) != str:
+                if not isinstance(child, str):
                     child.traverse(
                             enteredNode=enteredNode,
                             exitedNode=exitedNode,
